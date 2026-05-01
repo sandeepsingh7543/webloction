@@ -1,7 +1,7 @@
 // ============================================================
 // CONFIGURATION - Paste your Google Apps Script Web App URL here
 // ============================================================
-const GOOGLE_SCRIPT_URL = "PASTE_YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE";
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzTTKozCgUoXoiRWqZ31qOAmQeIEf90M1B7xHfdaVgZXJQzYFhwBT-s2im-Tx9J9LCH/exec";
 
 // ============================================================
 // DOM Elements
